@@ -1,0 +1,114 @@
+#!/bin/bash
+
+CACHE_DIR="$HOME/.cache/vpnc"
+CONFIG_DIR="$HOME/.vpnc"
+
+if [[ ! -d $CACHE_DIR ]]; then
+    mkdir -p $CACHE_DIR
+fi
+
+if [[ ! -d $CONFIG_DIR ]]; then
+    mkdir -p $CONFIG_DIR
+fi
+
+_usage() {
+cat << EOF
+Usage:
+    vpnc [action]
+
+Available Actions
+    start       Starts a vpn connection
+    stop        Stops a vpn connection
+    status      Display the status log of a vpn connection
+    list        List all vpn connections available
+
+Examples
+    vpnc start myvpn        Start vpn connection with name myvpn in $CONFIG_DIR
+    vpnc stop myvpn         Stop vpn connection with name myvpn in $CONFIG_DIR
+    vpnc status myvpn       Tail the contents of the vpn log file
+    vpnc list               List all vpn connections and their activation status
+EOF
+}
+
+_start() {
+    CONFIG_FILE="$CONFIG_DIR/$1.ovpn"
+    PID_FILE="$CACHE_DIR/$1.pid"
+    LOG_FILE="$CACHE_DIR/$1.log"
+
+    if [[ -f $PID_FILE ]]; then
+        echo "[!] openvpn already running for config $CONFIG_FILE"
+        echo "[!] aborting..."
+        return 
+    fi
+
+    sudo -b openvpn --config $CONFIG_FILE --writepid $PID_FILE --log $LOG_FILE > /dev/null
+}
+
+_stop() {
+    CONFIG_FILE="$CONFIG_DIR/$1.ovpn"
+    CONFIG_NAME=$(basename -s .ovpn $CONFIG_FILE)
+    PID_FILE="$CACHE_DIR/$USER_$1.pid"
+    LOG_FILE="$CACHE_DIR/$1.log"
+
+    if [[ ! -f $PID_FILE ]]; then
+        echo "[!] start the vpn connection with \"$0 start $1\" before issuing the stop command"
+        return
+    fi
+
+    sudo cat $PID_FILE | xargs sudo kill -9
+    sudo rm $PID_FILE
+    sudo rm $LOG_FILE
+}
+
+_status() {
+    CONFIG_FILE="$CONFIG_DIR/$1.ovpn"
+    PID_FILE="$CACHE_DIR/$1.pid"
+    LOG_FILE="$CACHE_DIR/$1.log"
+
+    if [[ ! -f $PID_FILE ]]; then
+        echo "[!] start the vpn connection with \"$0 start $1\" before issuing the status command"
+        return
+    fi
+
+    sudo cat $LOG_FILE
+}
+
+_list() {
+    CONFIG_FILES=$(find $CONFIG_DIR -iname "*.ovpn")
+
+    if [[ -z $CONFIG_FILES ]]; then
+        echo "No available connections..."
+        return
+    fi
+
+    for CONFIG_FILE in $CONFIG_FILES; do
+        CONFIG_NAME=$(basename -s .ovpn $CONFIG_FILE)
+
+        if [[ -f "$CACHE_DIR/$CONFIG_NAME.pid" ]]; then
+            echo "[*] - $CONFIG_NAME"
+        else
+            echo "[ ] - $CONFIG_NAME"
+        fi
+    done
+}
+
+ACTION=$1
+
+case $ACTION in
+    start)
+        _start $2
+        ;;
+    stop)
+        _stop $2
+        ;;
+    status)
+        _status $2
+        ;;
+    list)
+        _list $2
+        ;;
+    *)
+        _usage
+        exit
+        ;;
+esac
