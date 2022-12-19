@@ -1,7 +1,7 @@
 #!/bin/bash
 
-CACHE_DIR="$HOME/.cache/vpnc"
-CONFIG_DIR="$HOME/.vpnc"
+CACHE_DIR="$HOME/.cache/vpnctl"
+CONFIG_DIR="$HOME/.vpnctl"
 
 if [[ ! -d $CACHE_DIR ]]; then
     mkdir -p $CACHE_DIR
@@ -14,7 +14,7 @@ fi
 _usage() {
 cat << EOF
 Usage:
-    vpnc [action]
+    vpnctl [action]
 
 Available Actions
     start       Starts a vpn connection
@@ -23,10 +23,10 @@ Available Actions
     list        List all vpn connections available
 
 Examples
-    vpnc start myvpn        Start vpn connection with name myvpn in $CONFIG_DIR
-    vpnc stop myvpn         Stop vpn connection with name myvpn in $CONFIG_DIR
-    vpnc status myvpn       Tail the contents of the vpn log file
-    vpnc list               List all vpn connections and their activation status
+    vpnctl start [vpn]        Start vpn connection [vpn] in $CONFIG_DIR
+    vpnctl stop [vpn]         Stop vpn connection [vpn] in $CONFIG_DIR
+    vpnctl status [vpn]       Tail the contents of the vpn log file
+    vpnctl list               List all vpn connections and their status
 EOF
 }
 
@@ -41,7 +41,7 @@ _start() {
         return 
     fi
 
-    sudo -b openvpn --config $CONFIG_FILE --writepid $PID_FILE --log $LOG_FILE > /dev/null
+    sudo openvpn --config $CONFIG_FILE --writepid $PID_FILE --log $LOG_FILE --daemon "$1-vpn"
 }
 
 _stop() {
